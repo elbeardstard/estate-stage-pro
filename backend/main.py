@@ -10,7 +10,9 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
-client = anthropic.Anthropic(api_key=os.getenv("CLAUDE_API_KEY"))
+# Lazy init - create client only when needed
+def get_client():
+    return Anthropic(api_key=os.getenv("CLAUDE_API_KEY"))
 
 @app.route("/health", methods=["GET"])
 def health():
@@ -27,7 +29,7 @@ def stage():
         
         prompt = f"Stage this empty {room_type} room with {style} style furniture. Return a detailed staging description."
         
-        response = client.messages.create(
+        response = get_client().messages.create(
             model="claude-3-5-sonnet-20241022",
             max_tokens=1024,
             messages=[{
