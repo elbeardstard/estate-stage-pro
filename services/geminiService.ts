@@ -53,7 +53,7 @@ export const analyzeGeometry = async (base64Image: string): Promise<GeometryRepo
   
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.0-flash',
       contents: {
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: cleanBase64 } },
@@ -121,19 +121,16 @@ export const generateStagedRoom = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-image-preview',
-      contents: { 
+      model: 'gemini-2.0-flash-exp',
+      contents: {
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: cleanOriginal } },
           { text: promptText }
-        ] 
+        ]
       },
-      config: { 
+      config: {
         systemInstruction: STAGER_SYSTEM_INSTRUCTION,
-        imageConfig: { 
-          aspectRatio: aspectRatio,
-          imageSize: "2K" 
-        } 
+        responseModalities: ['image', 'text'],
       }
     });
 

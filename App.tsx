@@ -1,9 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { Download, RefreshCw, Camera, AlertCircle, Key, Home } from 'lucide-react';
-import { generateStagedRoom, analyzeGeometry, GeometryReport, SupportedAspectRatio } from './services/geminiService';
+import { Download, RefreshCw, Camera, AlertCircle, Key } from 'lucide-react';
+import { analyzeGeometry, GeometryReport, SupportedAspectRatio } from './services/geminiService';
 import { Uploader } from './components/Uploader';
-import { ComparisonSlider } from './components/ComparisonSlider';
 import { Button } from './components/Button';
 import { LoadingState, RoomType } from './types';
 
@@ -112,17 +111,20 @@ const App = () => {
     formData.append('room_type', activeRoomType);
     formData.append('style', activeProfile);
     
-    const response = await fetch('https://estate-stage-pro-production.up.railway.app/stage', {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const response = await fetch(`${apiUrl}/stage`, {
       method: 'POST',
       body: formData,
     });
-    
+
     if (!response.ok) {
-      throw new Error(await response.text());
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || 'Request failed');
     }
-    
+
     const data = await response.json();
-    setStagedImage(data.staged_image);
+    // Backend returns text description, not an image
+    setStagedImage(data.description);
     setLoading(LoadingState.COMPLETE);
   } catch (err: any) {
     console.error('Staging error:', err);
@@ -131,12 +133,16 @@ const App = () => {
 };
   const handleDownload = () => {
     if (!stagedImage) return;
+    // stagedImage is text description, download as .txt file
+    const blob = new Blob([stagedImage], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = stagedImage;
-    link.download = `STAGED_${activeRoomType}_${activeProfile}_2K.png`;
+    link.href = url;
+    link.download = `STAGING_${activeRoomType}_${activeProfile}.txt`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const getContainerStyle = () => {
@@ -171,7 +177,19 @@ const App = () => {
           {!originalImage ? (
             <Uploader onImageSelect={handleUpload} />
           ) : stagedImage ? (
-            <ComparisonSlider beforeImage={originalImage} afterImage={stagedImage} />
+            /* Display staging description alongside original image */
+            <div className="w-full h-full flex">
+              <div className="w-1/2 h-full relative border-r-2 border-black">
+                <img src={originalImage} alt="Original" className="w-full h-full object-contain" />
+                <div className="absolute top-4 left-4 bg-white border-2 border-black px-2 py-1 text-[8px] font-black tracking-widest">
+                  ORIGINAL
+                </div>
+              </div>
+              <div className="w-1/2 h-full overflow-auto p-4 bg-white">
+                <div className="text-[8px] font-black tracking-widest mb-2 text-zinc-500">STAGING_DESCRIPTION</div>
+                <div className="text-xs leading-relaxed whitespace-pre-wrap font-mono">{stagedImage}</div>
+              </div>
+            </div>
           ) : (
             <div className="relative w-full h-full flex flex-col items-center justify-center">
               <img src={originalImage} alt="Input" className="w-full h-full object-contain grayscale opacity-20" />
@@ -245,16 +263,16 @@ const App = () => {
         {stagedImage && (
           <div className="flex justify-between items-center text-[9px] font-black uppercase border-b-2 border-black pb-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="flex gap-4">
-              <span>RESOLUTION: 2048x2048</span>
-              <span>GEOMETRY: PASSED</span>
+              <span>TYPE: {activeRoomType}</span>
+              <span>STYLE: {activeProfile}</span>
               <span>RATIO: {aspectRatio}</span>
               <span className="text-zinc-400">STATUS: COMPLETE</span>
             </div>
-            <button 
+            <button
               onClick={handleDownload}
               className="flex items-center gap-2 px-3 py-1 bg-black text-white border-2 border-black hover:bg-zinc-800 transition-colors"
             >
-              <Download className="w-3 h-3" /> EXPORT_2K_PNG
+              <Download className="w-3 h-3" /> EXPORT_DESCRIPTION
             </button>
           </div>
         )}
