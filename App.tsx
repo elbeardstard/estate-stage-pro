@@ -90,52 +90,45 @@ const App = () => {
   };
 
   const handleStage = async () => {
-    if (!originalImage) return;
-    if (!hasKey) {
-      const alreadyHasKey = await window.aistudio?.hasSelectedApiKey();
-      if (!alreadyHasKey) { await handleKeySelection(); } else { setHasKey(true); }
+  if (!originalImage) return;
+
+  setLoading(LoadingState.PROCESSING);
+  
+  try {
+    const formData = new FormData();
+    
+    // Convert base64 to Blob
+    const arr = originalImage.split(',');
+    const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+    const bstr = atob(arr[1]);
+    const n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    for (let i = 0; i < n; i++) {
+      u8arr[i] = bstr.charCodeAt(i);
     }
-
-    setLoading(LoadingState.PROCESSING);
-    try {
-      const stylePart = activeProfile === 'MODERN' 
-        ? 'Minimalist modern aesthetic. Clean lines, organic wood, neutral palette.' 
-        : 'Luxurious maximalist aesthetic. High-end textures, designer fixtures, warm ambient lighting.';
-      
-      const roomPrompts: Record<RoomType, string> = {
-        LIVING: "Professional living room staging with designer sofa, coffee table, and area rug.",
-        KITCHEN: "High-end kitchen staging with modern appliances, marble countertops, and stools.",
-        DINING: "Elegant dining room setup with large table, upholstered chairs, and centerpiece.",
-        LIVING_DINING: "Seamless living and dining combo staging with distinct but cohesive zones.",
-        BEDROOM: "Cozy guest bedroom staging with bed, nightstands, and soft linens.",
-        MASTER_BEDROOM: "Grand master suite staging with king bed, lounge area, and premium lighting.",
-        OFFICE: "Functional executive home office staging with desk, ergonomic chair, and shelving.",
-        KID_BEDROOM: "Creative child's bedroom staging with colorful yet tasteful furniture.",
-        NURSERY: "Calming nursery staging with a crib, rocking chair, and gentle decor."
-      };
-
-      const finalPrompt = `${roomPrompts[activeRoomType]} ${stylePart}`;
-      
-      const result = await generateStagedRoom(
-        originalImage, 
-        finalPrompt, 
-        'empty', 
-        ['light', 'structure'], 
-        geometry || undefined,
-        cameraRealism,
-        aspectRatio
-      );
-      setStagedImage(result);
-      setLoading(LoadingState.COMPLETE);
-    } catch (err: any) {
-      if (err.message?.includes("Requested entity was not found")) {
-        setHasKey(false);
-        await handleKeySelection();
-      }
-      setLoading(LoadingState.ERROR);
+    
+    const blob = new Blob([u8arr], { type: mime });
+    formData.append('image', blob, 'room.jpg');
+    formData.append('room_type', activeRoomType);
+    formData.append('style', activeProfile);
+    
+    const response = await fetch('https://estate-stage-pro-production.up.railway.app/stage', {
+      method: 'POST',
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      throw new Error(await response.text());
     }
-  };
-
+    
+    const data = await response.json();
+    setStagedImage(data.staged_image);
+    setLoading(LoadingState.COMPLETE);
+  } catch (err: any) {
+    console.error('Staging error:', err);
+    setLoading(LoadingState.ERROR);
+  }
+};
   const handleDownload = () => {
     if (!stagedImage) return;
     const link = document.createElement('a');
