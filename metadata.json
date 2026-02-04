@@ -1,0 +1,5 @@
+{
+  "name": "EstateStage AI",
+  "description": "A professional real estate virtual staging application powered by Gemini 2.5 Flash Image. It preserves architectural geometry while allowing users to re-stage and edit interiors using natural language prompts.",
+  "requestFramePermissions": []
+}
