@@ -584,9 +584,19 @@ Generate the virtually staged version of this room."""
         for part in parts:
             if "inlineData" in part:
                 image_b64 = part["inlineData"]["data"]
+
+                # Decode and check output dimensions
+                import io
+                from PIL import Image as PILImage
+                image_bytes = base64.b64decode(image_b64)
+                output_img = PILImage.open(io.BytesIO(image_bytes))
+                output_width, output_height = output_img.size
+                app.logger.info(f"Gemini output dimensions: {output_width}x{output_height}")
+
                 response_data = {
                     "image": f"data:image/png;base64,{image_b64}",
-                    "status": "success"
+                    "status": "success",
+                    "output_dimensions": {"width": output_width, "height": output_height}
                 }
                 # Include enhanced scene analysis in response if available
                 if scene_analysis:
